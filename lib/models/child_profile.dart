@@ -2,28 +2,25 @@ import 'package:hive/hive.dart';
 
 part 'child_profile.g.dart';
 
-@HiveType(typeId: 0)
-class ChildProfile extends HiveObject {
+@HiveType(typeId: 1) // <- SKIFT hvis du allerede bruger 1 til noget andet
+class ChildProfile {
   @HiveField(0)
-  String name;
+  final String name;
 
   @HiveField(1)
-  DateTime birthDate;
+  final DateTime birthDate;
 
   @HiveField(2)
-  List<String> challengeAreas;
+  final List<String> challengeAreas;
 
+  /// Bruges både lokalt og når vi sender/opfanger fra Supabase
   @HiveField(3)
-  String currentLevel;
+  final DateTime createdAt;
 
-  @HiveField(4)
-  DateTime createdAt;
-
-  ChildProfile({
+  const ChildProfile({
     required this.name,
     required this.birthDate,
     required this.challengeAreas,
-    this.currentLevel = 'beginner',
     required this.createdAt,
   });
 }

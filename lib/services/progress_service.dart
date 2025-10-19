@@ -1,133 +1,116 @@
-import 'package:hive/hive.dart';
-import '../models/progress_data.dart';
-import '../models/word_attempt.dart';
+// lib/services/progress_service.dart
+import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
+/// Simpel mestring via Exponential Moving Average (EMA).
+/// Vi tracker to niveauer pr. barn:
+///  - pr domæne: key = "$childId::domain::`domainNorm`"
+///  - pr øvelse: key = "$childId::exercise::`exerciseId`"
+///
+/// Struktur i boksen:
+///   { 'ema': double 0..1, 'count': int, 'lastUpdated': iso8601 }
 class ProgressService {
-  static Box<ProgressData>? _progressBox;
-  static Box<WordAttempt>? _attemptsBox;
+  ProgressService._();
+  static final ProgressService instance = ProgressService._();
 
-  static Future<void> initialize() async {
-    _progressBox = Hive.box<ProgressData>('progress');
-    _attemptsBox = Hive.box<WordAttempt>('attempts');
+  static const String _boxName = 'mastery_v1';
+  Box? _box;
+
+  Future<void> init() async {
+    _box ??= await Hive.openBox(_boxName);
   }
 
-  // Gem et forsøg og opdater progress
-  static Future<void> recordAttempt({
-    required String wordId,
-    required String targetWord,
-    required bool wasSuccessful,
-    double accuracyScore = 0.0,
+  Box get _b {
+    final b = _box;
+    if (b == null) {
+      throw StateError('ProgressService not initialized. Call init() first.');
+    }
+    return b;
+  }
+
+  /// Lyttbar boks så UI kan rebuildes automatisk.
+  ValueListenable<Box> listenable() => _b.listenable();
+
+  /// Normaliser dansk tekst til nøgler.
+  static String normalize(String s) {
+    final lower = s.toLowerCase().trim();
+    return lower
+        .replaceAll('æ', 'ae')
+        .replaceAll('ø', 'o')
+        .replaceAll('å', 'a')
+        .replaceAll(RegExp(r'\s+'), '')
+        .replaceAll(RegExp(r'[^a-z0-9:_\-]'), '');
+  }
+
+  String _domainKey(String childId, String domain) =>
+      '$childId::domain::${normalize(domain)}';
+
+  String _exerciseKey(String childId, String exerciseId) =>
+      '$childId::exercise::$exerciseId';
+
+  double getDomainMastery(String childId, String domain) {
+    final k = _domainKey(childId, domain);
+    final map = _b.get(k);
+    if (map is Map) {
+      final ema = map['ema'];
+      if (ema is num) return ema.toDouble().clamp(0.0, 1.0);
+    }
+    return 0.0;
+  }
+
+  double getExerciseMastery(String childId, String exerciseId) {
+    final k = _exerciseKey(childId, exerciseId);
+    final map = _b.get(k);
+    if (map is Map) {
+      final ema = map['ema'];
+      if (ema is num) return ema.toDouble().clamp(0.0, 1.0);
+    }
+    return 0.0;
+  }
+
+  /// Opdater EMA efter et svar.
+  /// `score`: 0..1 (1=rigtigt, 0=forkert)
+  Future<void> updateOnAnswer({
+    required String childId,
+    required String domain,
+    required String exerciseId,
+    required double score,
+    double alpha = 0.3,
   }) async {
-    if (_progressBox == null || _attemptsBox == null) {
-      await initialize();
-    }
+    final nowIso = DateTime.now().toUtc().toIso8601String();
 
-    final now = DateTime.now();
+    // Domæne
+    final dk = _domainKey(childId, domain);
+    final dm = Map<String, dynamic>.from((_b.get(dk) as Map?) ?? const {});
+    final dPrev = (dm['ema'] as num?)?.toDouble() ?? 0.0;
+    final dCount = (dm['count'] as int?) ?? 0;
+    final dNew = alpha * score + (1 - alpha) * dPrev;
+    dm['ema'] = dNew.clamp(0.0, 1.0);
+    dm['count'] = dCount + 1;
+    dm['lastUpdated'] = nowIso;
+    await _b.put(dk, dm);
 
-    // Gem attempt
-    final attempt = WordAttempt(
-      wordId: wordId,
-      targetWord: targetWord,
-      accuracyScore: accuracyScore,
-      attemptTime: now,
-      sessionId: now.millisecondsSinceEpoch ~/ 1000,
-      wasSuccessful: wasSuccessful,
-    );
-
-    await _attemptsBox!.add(attempt);
-
-    // Opdater eller opret progress
-    ProgressData? progress = _progressBox!.get(wordId);
-
-    if (progress == null) {
-      progress = ProgressData(
-        wordId: wordId,
-        totalAttempts: 1,
-        successfulAttempts: wasSuccessful ? 1 : 0,
-        firstAttempt: now,
-        lastAttempt: now,
-        isUnlocked: true,
-        bestScore: accuracyScore,
-        sessionDates: [now],
-      );
-    } else {
-      progress.totalAttempts++;
-      if (wasSuccessful) progress.successfulAttempts++;
-      progress.lastAttempt = now;
-      progress.bestScore = accuracyScore > progress.bestScore
-          ? accuracyScore
-          : progress.bestScore;
-
-      // Tilføj session hvis det er en ny dag
-      final today = DateTime(now.year, now.month, now.day);
-      final lastSessionDay = progress.sessionDates.isNotEmpty
-          ? DateTime(
-              progress.sessionDates.last.year,
-              progress.sessionDates.last.month,
-              progress.sessionDates.last.day,
-            )
-          : DateTime(1970);
-
-      if (today != lastSessionDay) {
-        progress.sessionDates.add(now);
-      }
-    }
-
-    await _progressBox!.put(wordId, progress);
+    // Øvelse
+    final ek = _exerciseKey(childId, exerciseId);
+    final em = Map<String, dynamic>.from((_b.get(ek) as Map?) ?? const {});
+    final ePrev = (em['ema'] as num?)?.toDouble() ?? 0.0;
+    final eCount = (em['count'] as int?) ?? 0;
+    final eNew = alpha * score + (1 - alpha) * ePrev;
+    em['ema'] = eNew.clamp(0.0, 1.0);
+    em['count'] = eCount + 1;
+    em['lastUpdated'] = nowIso;
+    await _b.put(ek, em);
   }
 
-  // Hent progress for et ord
-  static ProgressData? getProgress(String wordId) {
-    if (_progressBox == null) return null;
-    return _progressBox!.get(wordId);
-  }
-
-  // Hent alle progress data
-  static List<ProgressData> getAllProgress() {
-    if (_progressBox == null) return [];
-    return _progressBox!.values.toList();
-  }
-
-  // Beregn samlet statistik
-  static Map<String, dynamic> getOverallStats() {
-    final allProgress = getAllProgress();
-
-    if (allProgress.isEmpty) {
-      return {
-        'totalWords': 0,
-        'masteredWords': 0,
-        'totalAttempts': 0,
-        'totalSessions': 0,
-        'averageSuccessRate': 0.0,
-        'totalStars': 0,
-      };
+  /// Til UI: `{percent: 0..100, attempts: int}`
+  Map<String, dynamic> domainProgress(String childId, String domain) {
+    final dk = _domainKey(childId, domain);
+    final map = _b.get(dk);
+    if (map is Map) {
+      final ema = (map['ema'] as num?)?.toDouble() ?? 0.0;
+      final cnt = (map['count'] as int?) ?? 0;
+      return {'percent': (ema * 100.0).clamp(0.0, 100.0), 'attempts': cnt};
     }
-
-    int totalAttempts = 0;
-    int totalSuccessful = 0;
-    int masteredWords = 0;
-    int totalStars = 0;
-    Set<DateTime> allSessionDates = {};
-
-    for (final progress in allProgress) {
-      totalAttempts += progress.totalAttempts;
-      totalSuccessful += progress.successfulAttempts;
-      if (progress.isMastered) masteredWords++;
-      totalStars += progress.stars;
-      allSessionDates.addAll(
-        progress.sessionDates.map((d) => DateTime(d.year, d.month, d.day)),
-      );
-    }
-
-    return {
-      'totalWords': allProgress.length,
-      'masteredWords': masteredWords,
-      'totalAttempts': totalAttempts,
-      'totalSessions': allSessionDates.length,
-      'averageSuccessRate': totalAttempts > 0
-          ? totalSuccessful / totalAttempts
-          : 0.0,
-      'totalStars': totalStars,
-    };
+    return const {'percent': 0.0, 'attempts': 0};
   }
 }

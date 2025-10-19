@@ -2,55 +2,29 @@ import 'package:hive/hive.dart';
 
 part 'progress_data.g.dart';
 
-@HiveType(typeId: 2)
-class ProgressData extends HiveObject {
+@HiveType(typeId: 2) // <- SKIFT hvis du allerede bruger 2
+class ProgressData {
+  /// Reference til barn i cloud (også brugt lokalt af os)
   @HiveField(0)
-  String wordId;
+  final String childId;
 
   @HiveField(1)
-  int totalAttempts;
+  final int totalStars;
 
   @HiveField(2)
-  int successfulAttempts;
+  final int masteredWords;
 
   @HiveField(3)
-  DateTime firstAttempt;
+  final double averageSuccessRate;
 
   @HiveField(4)
-  DateTime lastAttempt;
+  final DateTime createdAt;
 
-  @HiveField(5)
-  bool isUnlocked;
-
-  @HiveField(6)
-  double bestScore;
-
-  @HiveField(7)
-  List<DateTime> sessionDates;
-
-  ProgressData({
-    required this.wordId,
-    this.totalAttempts = 0,
-    this.successfulAttempts = 0,
-    required this.firstAttempt,
-    required this.lastAttempt,
-    this.isUnlocked = true,
-    this.bestScore = 0.0,
-    required this.sessionDates,
+  const ProgressData({
+    required this.childId,
+    required this.totalStars,
+    required this.masteredWords,
+    required this.averageSuccessRate,
+    required this.createdAt,
   });
-
-  // Beregn success rate
-  double get successRate =>
-      totalAttempts > 0 ? successfulAttempts / totalAttempts : 0.0;
-
-  // Er ordet mestret? (80% success rate med min 5 forsøg)
-  bool get isMastered => successRate >= 0.8 && totalAttempts >= 5;
-
-  // Få stjerner (0-3) baseret på performance
-  int get stars {
-    if (!isMastered) return 0;
-    if (successRate >= 0.95) return 3;
-    if (successRate >= 0.90) return 2;
-    return 1;
-  }
 }

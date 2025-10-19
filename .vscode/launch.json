@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "name": "Sproki Dev (Chrome fixed port)",
+      "program": "lib/main.dart",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define",
+        "API_BASE_URL=http://10.0.2.2:8080",
+        "--web-port",
+        "7357"
+      ]
+    },
+    {
+      "name": "Sproki Prod",
+      "program": "lib/main.dart",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define",
+        "API_BASE_URL=https://sproki-backend.onrender.com"
+      ]
+    }
+  ]
+}

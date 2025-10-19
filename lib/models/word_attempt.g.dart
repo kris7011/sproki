@@ -8,7 +8,7 @@ part of 'word_attempt.dart';
 
 class WordAttemptAdapter extends TypeAdapter<WordAttempt> {
   @override
-  final int typeId = 1;
+  final int typeId = 3;
 
   @override
   WordAttempt read(BinaryReader reader) {
@@ -17,31 +17,37 @@ class WordAttemptAdapter extends TypeAdapter<WordAttempt> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return WordAttempt(
-      wordId: fields[0] as String,
-      targetWord: fields[1] as String,
-      accuracyScore: fields[2] as double,
-      attemptTime: fields[3] as DateTime,
-      sessionId: fields[4] as int,
-      wasSuccessful: fields[5] as bool,
+      childId: fields[0] as String,
+      wordId: fields[1] as String,
+      word: fields[2] as String,
+      score: fields[3] as double,
+      createdAt: fields[4] as DateTime,
+      firstAttempt: fields[5] as DateTime,
+      lastAttempt: fields[6] as DateTime,
+      sessionDates: (fields[7] as List).cast<DateTime>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, WordAttempt obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(8)
       ..writeByte(0)
-      ..write(obj.wordId)
+      ..write(obj.childId)
       ..writeByte(1)
-      ..write(obj.targetWord)
+      ..write(obj.wordId)
       ..writeByte(2)
-      ..write(obj.accuracyScore)
+      ..write(obj.word)
       ..writeByte(3)
-      ..write(obj.attemptTime)
+      ..write(obj.score)
       ..writeByte(4)
-      ..write(obj.sessionId)
+      ..write(obj.createdAt)
       ..writeByte(5)
-      ..write(obj.wasSuccessful);
+      ..write(obj.firstAttempt)
+      ..writeByte(6)
+      ..write(obj.lastAttempt)
+      ..writeByte(7)
+      ..write(obj.sessionDates);
   }
 
   @override

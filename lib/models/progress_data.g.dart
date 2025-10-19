@@ -17,37 +17,28 @@ class ProgressDataAdapter extends TypeAdapter<ProgressData> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return ProgressData(
-      wordId: fields[0] as String,
-      totalAttempts: fields[1] as int,
-      successfulAttempts: fields[2] as int,
-      firstAttempt: fields[3] as DateTime,
-      lastAttempt: fields[4] as DateTime,
-      isUnlocked: fields[5] as bool,
-      bestScore: fields[6] as double,
-      sessionDates: (fields[7] as List).cast<DateTime>(),
+      childId: fields[0] as String,
+      totalStars: fields[1] as int,
+      masteredWords: fields[2] as int,
+      averageSuccessRate: fields[3] as double,
+      createdAt: fields[4] as DateTime,
     );
   }
 
   @override
   void write(BinaryWriter writer, ProgressData obj) {
     writer
-      ..writeByte(8)
-      ..writeByte(0)
-      ..write(obj.wordId)
-      ..writeByte(1)
-      ..write(obj.totalAttempts)
-      ..writeByte(2)
-      ..write(obj.successfulAttempts)
-      ..writeByte(3)
-      ..write(obj.firstAttempt)
-      ..writeByte(4)
-      ..write(obj.lastAttempt)
       ..writeByte(5)
-      ..write(obj.isUnlocked)
-      ..writeByte(6)
-      ..write(obj.bestScore)
-      ..writeByte(7)
-      ..write(obj.sessionDates);
+      ..writeByte(0)
+      ..write(obj.childId)
+      ..writeByte(1)
+      ..write(obj.totalStars)
+      ..writeByte(2)
+      ..write(obj.masteredWords)
+      ..writeByte(3)
+      ..write(obj.averageSuccessRate)
+      ..writeByte(4)
+      ..write(obj.createdAt);
   }
 
   @override

@@ -8,7 +8,7 @@ part of 'child_profile.dart';
 
 class ChildProfileAdapter extends TypeAdapter<ChildProfile> {
   @override
-  final int typeId = 0;
+  final int typeId = 1;
 
   @override
   ChildProfile read(BinaryReader reader) {
@@ -20,15 +20,14 @@ class ChildProfileAdapter extends TypeAdapter<ChildProfile> {
       name: fields[0] as String,
       birthDate: fields[1] as DateTime,
       challengeAreas: (fields[2] as List).cast<String>(),
-      currentLevel: fields[3] as String,
-      createdAt: fields[4] as DateTime,
+      createdAt: fields[3] as DateTime,
     );
   }
 
   @override
   void write(BinaryWriter writer, ChildProfile obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -36,8 +35,6 @@ class ChildProfileAdapter extends TypeAdapter<ChildProfile> {
       ..writeByte(2)
       ..write(obj.challengeAreas)
       ..writeByte(3)
-      ..write(obj.currentLevel)
-      ..writeByte(4)
       ..write(obj.createdAt);
   }
 
