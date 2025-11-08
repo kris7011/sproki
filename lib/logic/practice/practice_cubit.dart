@@ -7,7 +7,7 @@ import 'package:sproki/logic/practice/practice_state.dart';
 import 'package:sproki/logic/practice/tts_port.dart';
 import 'package:sproki/services/active_child_service.dart';
 import 'package:sproki/services/paywall_service.dart';
-import 'package:sproki/services/progress_service.dart';
+import 'package:sproki/services/progress_service.dart'; // <- uden alias
 
 class PracticeCubit extends Cubit<PracticeState> {
   PracticeCubit({
@@ -37,7 +37,7 @@ class PracticeCubit extends Cubit<PracticeState> {
     emit(state.copyWith(
       index: i,
       phase: PracticePhase.idle,
-      score: 0,
+      score: 0.0,
       success: false,
     ));
   }
@@ -48,7 +48,7 @@ class PracticeCubit extends Cubit<PracticeState> {
     emit(state.copyWith(
       index: i,
       phase: PracticePhase.idle,
-      score: 0,
+      score: 0.0,
       success: false,
     ));
   }
@@ -77,13 +77,14 @@ class PracticeCubit extends Cubit<PracticeState> {
     required double score,
     required bool success,
   }) async {
+    final clamped = score.clamp(0.0, 100.0).toDouble();
     final newTotal = state.totalAttempts + 1;
     final newSuccess = state.successfulAttempts + (success ? 1 : 0);
-    final best = score > state.bestScore ? score : state.bestScore;
+    final best = clamped > state.bestScore ? clamped : state.bestScore;
 
     emit(state.copyWith(
       phase: PracticePhase.scored,
-      score: score.clamp(0, 100),
+      score: clamped,
       success: success,
       totalAttempts: newTotal,
       successfulAttempts: newSuccess,
@@ -94,24 +95,32 @@ class PracticeCubit extends Cubit<PracticeState> {
       final childId =
           ActiveChildService.instance.activeChildIdSync ?? 'local-default';
 
-      // Store as 0..1 for EMA
+      // Lokal EMA
       await ProgressService.instance.updateOnAnswer(
         childId: childId,
-        domain: 'ordforråd', // this cubit is for word practice
+        domain: 'ordforråd',
         exerciseId: 'word:${state.current.id}',
-        score: (score / 100.0).clamp(0.0, 1.0),
+        score: success ? 1.0 : 0.0,
         alpha: 0.35,
       );
 
+      // Backend event (wrapper i ProgressService)
+      await ProgressService.recordAttempt(
+        childId: childId,
+        wordId: state.current.id,
+        word: state.current.word,
+        scorePercent: clamped,
+        wasSuccessful: success,
+      );
+
       await paywall.recordAttempt(childId);
-    } catch (_) {}
+    } catch (_) {
+      // Stille i produktion
+    }
+
+    // Lille delay så barnet når at se feedback
+    await Future.delayed(const Duration(milliseconds: 700));
   }
-
-  Future<void> markGood() => registerResult(
-      score: (state.score < 90 ? 90 : state.score), success: true);
-
-  Future<void> markBad() => registerResult(
-      score: (state.score > 60 ? 60 : state.score), success: false);
 
   @override
   Future<void> close() async {

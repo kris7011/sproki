@@ -3,9 +3,12 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sproki/data/words_content.dart';
 import 'package:sproki/screens/parent_report_upload_screen.dart';
 import 'package:sproki/services/plan_store.dart';
-import 'package:sproki/services/practice_event_queue.dart';
+import 'package:sproki/services/practice_queue_service.dart';
 import 'package:sproki/services/progress_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+// NEW: API imports
+import 'package:sproki/api/api_client.dart';
 
 // Screens & routes
 import 'package:sproki/routes/app_routes.dart';
@@ -36,7 +39,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await WordsRepo.instance.init();
 
-  // Supabase init (valgfrit)
+  // Supabase init (optional)
   final url = _envUrl.isNotEmpty ? _envUrl : _devUrl;
   final anon = _envAnon.isNotEmpty ? _envAnon : _devAnon;
   if (url.isNotEmpty && anon.isNotEmpty) {
@@ -50,6 +53,16 @@ Future<void> main() async {
         autoRefreshToken: true,
       ),
     );
+
+    // If backend requires auth later, keep client token in sync.
+    api.setAuthToken(Supabase.instance.client.auth.currentSession?.accessToken);
+    Supabase.instance.client.auth.onAuthStateChange.listen((event) {
+      api.setAuthToken(
+          Supabase.instance.client.auth.currentSession?.accessToken);
+    });
+  } else {
+    // Dev without Supabase: backend can run with REQUIRE_SUPABASE=0
+    api.setAuthToken(null);
   }
 
   // Hive init
@@ -68,10 +81,9 @@ Future<void> main() async {
 
   await ActiveChildService.instance.ensureInitialized();
 
-  // VIGTIGT: PlanStore init for at kunne gemme/aflæse planer
   await PlanStore.init();
-  await PracticeEventQueue.ensureBoxesOpened();
-  await ProgressService.instance.init();   
+  await PracticeQueueService.instance.init();
+  await ProgressService.instance.init();
 
   runApp(const SprokiApp());
 }

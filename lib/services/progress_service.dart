@@ -1,11 +1,13 @@
 // lib/services/progress_service.dart
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:sproki/services/sproki_api.dart';
+import 'package:sproki/services/practice_queue_service.dart';
 
 /// Simpel mestring via Exponential Moving Average (EMA).
 /// Vi tracker to niveauer pr. barn:
-///  - pr domæne: key = "$childId::domain::`domainNorm`"
-///  - pr øvelse: key = "$childId::exercise::`exerciseId`"
+///  - pr domæne: key = `"$childId::domain::<domainNorm>"`
+///  - pr øvelse: key = `"$childId::exercise::<exerciseId>"`
 ///
 /// Struktur i boksen:
 ///   { 'ema': double 0..1, 'count': int, 'lastUpdated': iso8601 }
@@ -28,10 +30,8 @@ class ProgressService {
     return b;
   }
 
-  /// Lyttbar boks så UI kan rebuildes automatisk.
   ValueListenable<Box> listenable() => _b.listenable();
 
-  /// Normaliser dansk tekst til nøgler.
   static String normalize(String s) {
     final lower = s.toLowerCase().trim();
     return lower
@@ -39,7 +39,7 @@ class ProgressService {
         .replaceAll('ø', 'o')
         .replaceAll('å', 'a')
         .replaceAll(RegExp(r'\s+'), '')
-        .replaceAll(RegExp(r'[^a-z0-9:_\-]'), '');
+        .replaceAll(RegExp(r'[^a-z0-9:_\\-]'), '');
   }
 
   String _domainKey(String childId, String domain) =>
@@ -68,15 +68,15 @@ class ProgressService {
     return 0.0;
   }
 
-  /// Opdater EMA efter et svar.
-  /// `score`: 0..1 (1=rigtigt, 0=forkert)
+  /// Opdater EMA efter et svar. `score`: 0..1
   Future<void> updateOnAnswer({
     required String childId,
     required String domain,
     required String exerciseId,
-    required double score,
+    required num score, // accepterer num; castes til double
     double alpha = 0.3,
   }) async {
+    final s = score.toDouble().clamp(0.0, 1.0);
     final nowIso = DateTime.now().toUtc().toIso8601String();
 
     // Domæne
@@ -84,7 +84,7 @@ class ProgressService {
     final dm = Map<String, dynamic>.from((_b.get(dk) as Map?) ?? const {});
     final dPrev = (dm['ema'] as num?)?.toDouble() ?? 0.0;
     final dCount = (dm['count'] as int?) ?? 0;
-    final dNew = alpha * score + (1 - alpha) * dPrev;
+    final dNew = alpha * s + (1 - alpha) * dPrev;
     dm['ema'] = dNew.clamp(0.0, 1.0);
     dm['count'] = dCount + 1;
     dm['lastUpdated'] = nowIso;
@@ -95,7 +95,7 @@ class ProgressService {
     final em = Map<String, dynamic>.from((_b.get(ek) as Map?) ?? const {});
     final ePrev = (em['ema'] as num?)?.toDouble() ?? 0.0;
     final eCount = (em['count'] as int?) ?? 0;
-    final eNew = alpha * score + (1 - alpha) * ePrev;
+    final eNew = alpha * s + (1 - alpha) * ePrev;
     em['ema'] = eNew.clamp(0.0, 1.0);
     em['count'] = eCount + 1;
     em['lastUpdated'] = nowIso;
@@ -109,8 +109,40 @@ class ProgressService {
     if (map is Map) {
       final ema = (map['ema'] as num?)?.toDouble() ?? 0.0;
       final cnt = (map['count'] as int?) ?? 0;
-      return {'percent': (ema * 100.0).clamp(0.0, 100.0), 'attempts': cnt};
+      return {
+        'percent': (ema * 100.0).clamp(0.0, 100.0),
+        'attempts': cnt,
+      };
     }
     return const {'percent': 0.0, 'attempts': 0};
+  }
+
+  /// Sender forsøg til backend; fallback til lokal kø hvis det fejler.
+  static Future<void> recordAttempt({
+    required String childId,
+    required String wordId,
+    required String word,
+    required double scorePercent, // 0..100
+    required bool wasSuccessful,
+  }) async {
+    final score01 = (scorePercent / 100.0).clamp(0.0, 1.0);
+
+    final event = <String, dynamic>{
+      'childId': childId,
+      'domain': 'ordforråd',
+      'exerciseId': 'word:$wordId',
+      'outcome': wasSuccessful ? 'success' : 'fail',
+      'score': score01,
+      'meta': {'word': word, 'scorePercent': scorePercent},
+      'occurredAt': DateTime.now().toUtc().toIso8601String(),
+    };
+
+    try {
+      final api = SprokiApi();
+      await api.addPracticeEvents(childId, [event]);
+    } catch (e) {
+      // Fallback til kø
+      await PracticeQueueService.instance.enqueue(event);
+    }
   }
 }

@@ -1,7 +1,4 @@
-// lib/screens/main_menu_screen.dart
 import 'package:flutter/material.dart';
-import 'package:sproki/config/env.dart';
-import 'package:sproki/services/sproki_api.dart';
 import 'package:sproki/widgets/plan_badge.dart';
 
 import '../routes/app_routes.dart';
@@ -15,6 +12,9 @@ import '../screens/word_practice_screen.dart';
 import '../screens/category_exercise_screen.dart';
 import '../screens/rhyme_practice_screen.dart';
 
+// <-- Ny import: brug den lette HTTP-klient
+import 'package:sproki/api/api_client.dart';
+
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({super.key});
 
@@ -23,6 +23,8 @@ class MainMenuScreen extends StatefulWidget {
 }
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
+  final _api = ApiClient();
+
   bool _syncing = false;
   String? _activeChildId;
 
@@ -111,14 +113,51 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
-  // Hent plan igen (fix: baseUrl + Map-return)
+  // Hent latest_summary og byg en simpel lokal plan-struktur der passer til UI'et.
   Future<void> _refreshPlan() async {
     final id = _activeChildId ?? '';
     if (id.isEmpty) return;
     try {
-      final api = SprokiApi(baseUrl: Env.apiBaseUrl);
-      final planMap = await api.getPlanMap(id);
+      final latest = await _api.getLatestSummary(id);
+      final summary = (latest['summary'] as List?) ?? const [];
+
+      // Mapper 'summary' -> 'priorityAreas'
+      // Vi tager kun ikke-grønne domæner og laver et enkelt shortTermGoal.
+      final List<Map<String, dynamic>> priorityAreas = [];
+      for (final it in summary) {
+        final m = Map<String, dynamic>.from(it as Map);
+        final domain = (m['category'] as String? ?? '').trim();
+        final zone = (m['zone'] as String? ?? '').trim().toLowerCase();
+        final score = (m['score'] as num?)?.toDouble();
+
+        if (domain.isEmpty || score == null) continue;
+
+        if (zone == 'green' || zone == 'grøn' || zone == 'gron') {
+          // spring grønne over i “targets”
+          continue;
+        }
+
+        // simpelt mål: +10 hvis rød, +5 hvis gul – kan erstattes af backend senere
+        final shortGoal = (zone == 'red' || zone == 'rød' || zone == 'rod')
+            ? (score + 10.0)
+            : (score + 5.0);
+
+        priorityAreas.add({
+          'domain': domain, // bruges i UI
+          'zone': _daZone(zone), // vis pænt på dansk
+          'score': score,
+          'shortTermGoal': shortGoal,
+          'tips': const <String>[], // kan udfyldes senere
+        });
+      }
+
+      final planMap = {
+        'priorityAreas': priorityAreas,
+        'recommendations': const <Map<String, dynamic>>[],
+      };
+
       await PlanStore.savePlan(id, planMap);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Plan opdateret')),
@@ -128,6 +167,24 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Kunne ikke hente plan: $e')),
       );
+    }
+  }
+
+  // Helper: “green/yellow/red” -> dansk label
+  String _daZone(String z) {
+    switch (z) {
+      case 'green':
+      case 'grøn':
+      case 'gron':
+        return 'Grøn';
+      case 'yellow':
+        return 'Gul';
+      case 'red':
+      case 'rød':
+      case 'rod':
+        return 'Rød';
+      default:
+        return z;
     }
   }
 
