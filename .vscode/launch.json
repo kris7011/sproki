@@ -1,25 +1,53 @@
 {
+  "version": "0.2.0",
   "configurations": [
     {
-      "name": "Sproki Dev (Chrome fixed port)",
+      // =========================
+      // 🌐 WEB – DEV (Chrome)
+      // =========================
+      "name": "Sproki Dev (Web / Chrome)",
       "program": "lib/main.dart",
       "request": "launch",
       "type": "dart",
       "args": [
-        "--dart-define",
-        "API_BASE_URL=http://10.0.2.2:8080",
-        "--web-port",
-        "7357"
+        "--dart-define=API_BASE_URL=https://sproki-backend.onrender.com",
+        "--dart-define=API_BASE_PATH=",
+        "--dart-define=SUPABASE_URL=https://iurzmypymceulkymhwpy.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_4QVkDQedK25E9hJskaEuWg_ecrjajXF",
+        "--web-port=7357"
       ]
     },
+
     {
+      // =========================
+      // 🤖 ANDROID – Emulator
+      // =========================
+      "name": "Sproki Dev (Android Emulator)",
+      "program": "lib/main.dart",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "android",
+      "args": [
+        "--dart-define=API_BASE_URL=https://sproki-backend.onrender.com",
+        "--dart-define=API_BASE_PATH=",
+        "--dart-define=SUPABASE_URL=https://iurzmypymceulkymhwpy.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_4QVkDQedK25E9hJskaEuWg_ecrjajXF"
+      ]
+    },
+
+    {
+      // =========================
+      // 📦 PROD – samme backend
+      // =========================
       "name": "Sproki Prod",
       "program": "lib/main.dart",
       "request": "launch",
       "type": "dart",
       "args": [
-        "--dart-define",
-        "API_BASE_URL=https://sproki-backend.onrender.com"
+        "--dart-define=API_BASE_URL=https://sproki-backend.onrender.com",
+        "--dart-define=API_BASE_PATH=",
+        "--dart-define=SUPABASE_URL=https://iurzmypymceulkymhwpy.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_4QVkDQedK25E9hJskaEuWg_ecrjajXF"
       ]
     }
   ]

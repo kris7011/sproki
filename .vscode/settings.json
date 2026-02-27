@@ -8,5 +8,5 @@
     "https://jsr.io": true,
     "npm:": true
   },
-  "java.configuration.updateBuildConfiguration": "interactive"
+  "java.configuration.updateBuildConfiguration": "automatic"
 }

@@ -1,0 +1,7 @@
+com.sproki.sproki.app-pngs-0 /Users/krisriisgaardlarsen/Personal/sproki/android/app/build/generated/res/pngs/debug
+com.sproki.sproki.app-resValues-1 /Users/krisriisgaardlarsen/Personal/sproki/android/app/build/generated/res/resValues/debug
+com.sproki.sproki.app-packageDebugResources-2 /Users/krisriisgaardlarsen/Personal/sproki/android/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.sproki.sproki.app-packageDebugResources-3 /Users/krisriisgaardlarsen/Personal/sproki/android/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.sproki.sproki.app-debug-4 /Users/krisriisgaardlarsen/Personal/sproki/android/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.sproki.sproki.app-debug-5 /Users/krisriisgaardlarsen/Personal/sproki/android/app/src/debug/res
+com.sproki.sproki.app-main-6 /Users/krisriisgaardlarsen/Personal/sproki/android/app/src/main/res

@@ -1,0 +1,50 @@
+[
+    {
+        "id": "w_cat",
+        "word": "kat",
+        "category": "dyr",
+        "difficulty": 1,
+        "emoji": "🐱",
+        "isStarterWord": true
+    },
+    {
+        "id": "w_dog",
+        "word": "hund",
+        "category": "dyr",
+        "difficulty": 1,
+        "emoji": "🐶",
+        "isStarterWord": true
+    },
+    {
+        "id": "w_car",
+        "word": "bil",
+        "category": "ting",
+        "difficulty": 2,
+        "emoji": "🚗",
+        "isStarterWord": false
+    },
+    {
+        "id": "w_bus",
+        "word": "bus",
+        "category": "ting",
+        "difficulty": 2,
+        "emoji": "🚌",
+        "isStarterWord": false
+    },
+    {
+        "id": "w_banana",
+        "word": "banan",
+        "category": "mad",
+        "difficulty": 2,
+        "emoji": "🍌",
+        "isStarterWord": false
+    },
+    {
+        "id": "w_apple",
+        "word": "æble",
+        "category": "mad",
+        "difficulty": 1,
+        "emoji": "🍎",
+        "isStarterWord": true
+    }
+]
