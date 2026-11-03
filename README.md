@@ -52,7 +52,7 @@ lib/features/practice_history/
 
 The composition root (`main.dart`) injects the repository into `HomeScreen`. The history screen provides a feature-scoped `PracticeHistoryCubit` with `BlocProvider` and renders immutable loading, empty, loaded and failure states with `BlocBuilder`. Neither the Cubit nor the widgets import Hive. The Hive adapter maps existing `WordAttempt` data into immutable snapshots; **the stored schema and adapters are unchanged**. This keeps the feature isolated and testable with fake repositories.
 
-The tests cover Cubit state transitions, retries and cancellation safety, local Hive mapping and sorting, and widget empty/populated states. `bloc_test` validates the emitted state sequence. The existing Flutter template counter test has been replaced with tests of real app functionality.
+The tests cover Cubit state transitions, retries and cancellation safety, local Hive mapping and sorting, and widget empty/populated states. Cubit states are asserted through its public stream using `flutter_test`; this avoids a dependency conflict between the current `bloc_test` and the legacy Hive code generator. The existing Flutter template counter test has been replaced with tests of real app functionality.
 
 ## Privacy and limitations
 
