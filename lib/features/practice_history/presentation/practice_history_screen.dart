@@ -1,33 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-import '../application/practice_history_controller.dart';
+import '../application/practice_history_cubit.dart';
 import '../domain/practice_history_repository.dart';
 
 /// Shows attempts already stored on this device; never contacts a server.
-class PracticeHistoryScreen extends StatefulWidget {
+class PracticeHistoryScreen extends StatelessWidget {
   const PracticeHistoryScreen({super.key, required this.repository});
 
   final PracticeHistoryRepository repository;
 
   @override
-  State<PracticeHistoryScreen> createState() => _PracticeHistoryScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => PracticeHistoryCubit(repository)..load(),
+      child: const _PracticeHistoryView(),
+    );
+  }
 }
 
-class _PracticeHistoryScreenState extends State<PracticeHistoryScreen> {
-  late final PracticeHistoryController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PracticeHistoryController(widget.repository)..load();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _PracticeHistoryView extends StatelessWidget {
+  const _PracticeHistoryView();
 
   @override
   Widget build(BuildContext context) {
@@ -38,17 +32,18 @@ class _PracticeHistoryScreenState extends State<PracticeHistoryScreen> {
           IconButton(
             tooltip: 'Opdater historik',
             icon: const Icon(Icons.refresh),
-            onPressed: _controller.load,
+            onPressed: () => context.read<PracticeHistoryCubit>().load(),
           ),
         ],
       ),
-      body: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          if (_controller.isLoading) {
+      body: BlocBuilder<PracticeHistoryCubit, PracticeHistoryState>(
+        builder: (context, state) {
+          if (state is PracticeHistoryLoading ||
+              state is PracticeHistoryInitial) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (_controller.error != null) {
+
+          if (state is PracticeHistoryFailure) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -61,7 +56,8 @@ class _PracticeHistoryScreenState extends State<PracticeHistoryScreen> {
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
-                      onPressed: _controller.load,
+                      onPressed: () =>
+                          context.read<PracticeHistoryCubit>().load(),
                       child: const Text('Prøv igen'),
                     ),
                   ],
@@ -70,8 +66,7 @@ class _PracticeHistoryScreenState extends State<PracticeHistoryScreen> {
             );
           }
 
-          final attempts = _controller.attempts;
-          if (attempts.isEmpty) {
+          if (state is PracticeHistoryEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -83,30 +78,35 @@ class _PracticeHistoryScreenState extends State<PracticeHistoryScreen> {
             );
           }
 
-          final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
-          return ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: attempts.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final attempt = attempts[index];
-              return ListTile(
-                leading: Icon(
-                  attempt.wasSuccessful
-                      ? Icons.check_circle_outline
-                      : Icons.replay,
-                  color: attempt.wasSuccessful
-                      ? Colors.green.shade700
-                      : Theme.of(context).colorScheme.secondary,
-                ),
-                title: Text(attempt.word),
-                subtitle: Text(dateFormat.format(attempt.practicedAt)),
-                trailing: Text(
-                  attempt.wasSuccessful ? 'Godkendt' : 'Øv videre',
-                ),
-              );
-            },
-          );
+          if (state is PracticeHistoryLoaded) {
+            final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
+            return ListView.separated(
+              padding: const EdgeInsets.all(12),
+              itemCount: state.attempts.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final attempt = state.attempts[index];
+                return ListTile(
+                  leading: Icon(
+                    attempt.wasSuccessful
+                        ? Icons.check_circle_outline
+                        : Icons.replay,
+                    color: attempt.wasSuccessful
+                        ? Colors.green.shade700
+                        : Theme.of(context).colorScheme.secondary,
+                  ),
+                  title: Text(attempt.word),
+                  subtitle: Text(dateFormat.format(attempt.practicedAt)),
+                  trailing: Text(
+                    attempt.wasSuccessful ? 'Godkendt' : 'Øv videre',
+                  ),
+                );
+              },
+            );
+          }
+
+          // The sealed state hierarchy is exhaustive above.
+          return const SizedBox.shrink();
         },
       ),
     );
