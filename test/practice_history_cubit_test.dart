@@ -92,4 +92,21 @@ void main() {
     await loading;
     expect(cubit.isClosed, isTrue);
   });
+  test('deduplicates overlapping refresh requests', () async {
+    final pending = Completer<List<PracticeAttempt>>();
+    final repository = _FakeRepository(() => pending.future);
+    final cubit = PracticeHistoryCubit(repository);
+    addTearDown(cubit.close);
+
+    final first = cubit.load();
+    final second = cubit.load();
+
+    expect(repository.calls, 1);
+    expect(cubit.state, isA<PracticeHistoryLoading>());
+
+    pending.complete([sample]);
+    await Future.wait([first, second]);
+    expect(cubit.state, isA<PracticeHistoryLoaded>());
+  });
+
 }
