@@ -4,13 +4,17 @@
 
 import 'package:flutter/material.dart';
 import '../data/words_content.dart';
+import '../features/practice_history/domain/practice_history_repository.dart';
+import '../features/practice_history/presentation/practice_history_screen.dart';
 import '../services/progress_service.dart';
 import '../services/unlock_service.dart';
 import '../widgets/word_card.dart';
 import 'progress_overview_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.practiceHistoryRepository});
+
+  final PracticeHistoryRepository practiceHistoryRepository;
 
   @override
   HomeScreenState createState() => HomeScreenState();
@@ -42,6 +46,19 @@ class HomeScreenState extends State<HomeScreen>
         title: const Text('Sproki 🗣️'),
         backgroundColor: Colors.blue.shade300,
         actions: [
+          IconButton(
+            tooltip: 'Vis øvelseshistorik',
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PracticeHistoryScreen(
+                    repository: widget.practiceHistoryRepository,
+                  ),
+                ),
+              );
+            },
+          ),
           // Toggle for låste ord - vigtig for forældre at se progression
           IconButton(
             icon: Icon(_showLockedWords ? Icons.lock_open : Icons.lock),
