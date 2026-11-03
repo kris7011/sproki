@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: flutter-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -19,5 +23,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Verify dependency lockfile is committed
+        run: git diff --exit-code -- pubspec.lock
       - run: flutter analyze
       - run: flutter test
