@@ -204,23 +204,28 @@ class ReportBuilderScreenState extends State<ReportBuilderScreen> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        ...ReportType.values
-            .map(
-              (type) => RadioListTile<ReportType>(
-                title: Text(_getReportTypeName(type)),
-                subtitle: Text(_getReportTypeDescription(type)),
-                value: type,
-                groupValue: _selectedReportType,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedReportType = value!;
-                    _updateDefaultDateRange();
-                  });
-                },
-                activeColor: Colors.purple,
-              ),
-            )
-            .toList(),
+        RadioGroup<ReportType>(
+          groupValue: _selectedReportType,
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              _selectedReportType = value;
+              _updateDefaultDateRange();
+            });
+          },
+          child: Column(
+            children: ReportType.values
+                .map(
+                  (type) => RadioListTile<ReportType>(
+                    title: Text(_getReportTypeName(type)),
+                    subtitle: Text(_getReportTypeDescription(type)),
+                    value: type,
+                    activeColor: Colors.purple,
+                  ),
+                )
+                .toList(),
+          ),
+        ),
       ],
     );
   }
@@ -421,7 +426,7 @@ class ReportBuilderScreenState extends State<ReportBuilderScreen> {
               _includeRecommendations = value;
             });
           },
-          activeColor: Colors.purple,
+          activeThumbColor: Colors.purple,
         ),
         SwitchListTile(
           title: const Text('Detaljeret ord analyse'),
@@ -432,7 +437,7 @@ class ReportBuilderScreenState extends State<ReportBuilderScreen> {
               _includeDetailedBreakdown = value;
             });
           },
-          activeColor: Colors.purple,
+          activeThumbColor: Colors.purple,
         ),
         SwitchListTile(
           title: const Text('Inkluder charts'),
@@ -443,7 +448,7 @@ class ReportBuilderScreenState extends State<ReportBuilderScreen> {
               _includeCharts = value;
             });
           },
-          activeColor: Colors.purple,
+          activeThumbColor: Colors.purple,
         ),
       ],
     );
