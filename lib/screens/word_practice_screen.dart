@@ -2,10 +2,15 @@
 /// UX FORBEDRING: Billedet er nu primære interaction point for at høre ordet
 /// VISUAL FEEDBACK: Border, shadow og animation indikerer interaktivitet
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:sproki/services/progress_service.dart';
-import 'package:sproki/services/speech_service.dart';
+import '../features/speech_practice/application/speech_bloc.dart';
+import '../features/speech_practice/data/device_speech_recognition_gateway.dart';
+import '../features/speech_practice/domain/speech_recognition_gateway.dart';
 import 'package:sproki/services/tts_service.dart';
 import 'package:sproki/services/unlock_service.dart';
 import 'package:sproki/widgets/unlock_animation.dart';
@@ -14,8 +19,13 @@ import '../data/words_content.dart';
 
 class WordPracticeScreen extends StatefulWidget {
   final WordContent word;
+  final SpeechRecognitionGateway? speechGateway;
 
-  const WordPracticeScreen({super.key, required this.word});
+  const WordPracticeScreen({
+    super.key,
+    required this.word,
+    this.speechGateway,
+  });
 
   @override
   WordPracticeScreenState createState() => WordPracticeScreenState();
@@ -31,8 +41,10 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
   late Animation<double>
   _imageBounceAnimation; // NYT: For billede bounce effect
 
-  bool _isListening = false;
-  String _recognizedText = '';
+  late final SpeechBloc _speechBloc = SpeechBloc(
+    gateway: widget.speechGateway ?? const DeviceSpeechRecognitionGateway(),
+    targetWord: widget.word.word,
+  );
   bool _showCelebration = false;
 
   @override
@@ -74,8 +86,27 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return CelebrationWidget(
-      show: _showCelebration,
+    return BlocListener<SpeechBloc, SpeechState>(
+      bloc: _speechBloc,
+      listener: (context, state) {
+        if (state is SpeechStarting || state is SpeechListening) {
+          _animationController.forward();
+        } else {
+          _animationController.reverse();
+        }
+
+        if (state is SpeechMatched) {
+          _showFeedback(true);
+        } else if (state is SpeechNoInput) {
+          _showFeedback(false);
+        } else if (state is SpeechUnavailable) {
+          _showError('Mikrofon ikke tilgængelig');
+        } else if (state is SpeechFailure) {
+          _showError('Stemmegenkendelse kunne ikke startes');
+        }
+      },
+      child: CelebrationWidget(
+        show: _showCelebration,
       child: Scaffold(
         appBar: AppBar(
           title: Text('Øv: ${widget.word.word}'),
@@ -265,53 +296,75 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
 
                 const SizedBox(height: 25),
 
-                // Mikrofon knap (uændret funktionalitet)
-                GestureDetector(
-                  onTap: _toggleListening,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: _isListening ? Colors.red : Colors.green,
-                      borderRadius: BorderRadius.circular(40),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      _isListening ? Icons.stop : Icons.mic,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                ),
+                // Microphone controls render the Bloc state directly.
+                BlocBuilder<SpeechBloc, SpeechState>(
+                  bloc: _speechBloc,
+                  builder: (context, state) {
+                    final isActive =
+                        state is SpeechStarting || state is SpeechListening;
+                    final transcript = state is SpeechListening
+                        ? state.transcript
+                        : '';
 
-                const SizedBox(height: 15),
-
-                // Feedback text (uændret)
-                if (_isListening)
-                  Column(
-                    children: [
-                      const Text(
-                        'Lytter... 👂',
-                        style: TextStyle(fontSize: 16, color: Colors.red),
-                      ),
-                      if (_recognizedText.isNotEmpty)
-                        Text(
-                          'Jeg hørte: "$_recognizedText"',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue,
+                    return Column(
+                      children: [
+                        Semantics(
+                          button: true,
+                          label: isActive
+                              ? 'Stop stemmegenkendelse'
+                              : 'Start stemmegenkendelse',
+                          child: GestureDetector(
+                            onTap: _toggleListening,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: isActive ? Colors.red : Colors.green,
+                                borderRadius: BorderRadius.circular(40),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 8,
+                                    offset: Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isActive ? Icons.stop : Icons.mic,
+                                color: Colors.white,
+                                size: 40,
+                              ),
+                            ),
                           ),
                         ),
-                    ],
-                  ),
-
-                const SizedBox(height: 30),
+                        const SizedBox(height: 15),
+                        if (isActive)
+                          Column(
+                            children: [
+                              const Text(
+                                'Lytter...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              if (transcript.isNotEmpty)
+                                Text(
+                                  'Jeg hørte: "$transcript"',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        if (state is SpeechNotMatched)
+                          const Text('Prøv igen – ordet blev ikke genkendt.'),
+                        const SizedBox(height: 30),
+                      ],
+                    );
+                  },
+                ),
 
                 // FJERNET: "Hør ordet igen" knap da funktionaliteten nu er i billedet
                 // Dette giver et cleaner interface med færre knapper
@@ -320,7 +373,8 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   /// Afspiller ordet med enhanced visual feedback
@@ -362,102 +416,13 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
     );
   }
 
-  /// Toggle listening functionality (uændret)
-  /// BEHOLD: Mikrofon funktionalitet forbliver den samme da den fungerer godt
-  void _toggleListening() async {
-    if (_isListening) {
-      await SpeechService.stopListening();
-      setState(() {
-        _isListening = false;
-      });
-      _animationController.reverse();
-    } else {
-      bool available = await SpeechService.initialize();
-      if (!available) {
-        _showError('Mikrofon ikke tilgængelig');
-        return;
-      }
-
-      setState(() {
-        _isListening = true;
-        _recognizedText = '';
-      });
-      _animationController.forward();
-
-      await SpeechService.startListening(
-        onResult: (recognizedWords) {
-          if (kDebugMode) {
-            print('🎤 Raw speech result: "$recognizedWords"');
-            print('🎯 Target word: "${widget.word.word}"');
-          }
-
-          setState(() {
-            _recognizedText = recognizedWords;
-          });
-
-          // Tjek om ordet matcher
-          bool isMatch = _checkWordMatch(recognizedWords, widget.word.word);
-          if (kDebugMode) {
-            print('🔍 Match result: $isMatch');
-          }
-
-          if (isMatch) {
-            _stopListening();
-            _showFeedback(true);
-          }
-        },
-      );
-
-      // Stop efter 5 sekunder
-      Future.delayed(const Duration(seconds: 5), () {
-        if (_isListening) {
-          _stopListening();
-          if (_recognizedText.isEmpty) {
-            _showFeedback(false);
-          }
-        }
-      });
-    }
-  }
-
-  /// Word matching logic (uændret - fungerer godt)
-  bool _checkWordMatch(String recognized, String target) {
-    if (kDebugMode) {
-      print('Comparing: "$recognized" vs "$target"');
-    }
-
-    // Fjern mellemrum og gør til lowercase
-    String cleanRecognized = recognized.toLowerCase().trim();
-    String cleanTarget = target.toLowerCase().trim();
-
-    // Exact match først
-    if (cleanRecognized == cleanTarget) {
-      if (kDebugMode) {
-        print('✅ Exact match!');
-      }
-      return true;
-    }
-
-    // Hvis recognized er tomt, ikke en match
-    if (cleanRecognized.isEmpty) {
-      if (kDebugMode) {
-        print('❌ Empty recognition');
-      }
-      return false;
-    }
-
-    // Tillad kun hvis target ordet er indeholdt i recognized
-    if (cleanRecognized.contains(cleanTarget)) {
-      if (kDebugMode) {
-        print('✅ Target found in recognized');
-      }
-      return true;
-    }
-
-    if (kDebugMode) {
-      print('❌ No match');
-    }
-    return false;
+  /// The Bloc owns microphone operations, timeouts and transcript state.
+  void _toggleListening() {
+    _speechBloc.add(
+      _speechBloc.isRecording
+          ? const SpeechStopRequested()
+          : const SpeechStartRequested(),
+    );
   }
 
   /// Error display helper (uændret)
@@ -466,14 +431,6 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  /// Stop listening helper (uændret)
-  void _stopListening() {
-    setState(() {
-      _isListening = false;
-    });
-    _animationController.reverse();
   }
 
   /// Feedback dialog med unlock system (uændret funktionalitet)
@@ -629,6 +586,7 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
 
   @override
   void dispose() {
+    unawaited(_speechBloc.close());
     _animationController.dispose();
     _imageAnimationController.dispose(); // NYT: Dispose ny animation controller
     super.dispose();
