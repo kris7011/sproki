@@ -374,7 +374,7 @@ class WordPracticeScreenState extends State<WordPracticeScreen>
         ),
       ),
     ),
-  );
+    );
   }
 
   /// Afspiller ordet med enhanced visual feedback
