@@ -3,6 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:sproki/models/progress_data.dart';
 import 'features/practice_history/data/hive_practice_history_repository.dart';
 import 'features/practice_history/domain/practice_history_repository.dart';
+import 'features/progress_insights/data/hive_progress_insights_repository.dart';
+import 'features/progress_insights/domain/progress_insights_repository.dart';
 import 'models/child_profile.dart';
 import 'models/word_attempt.dart';
 import 'screens/home_screen.dart';
@@ -26,14 +28,22 @@ void main() async {
       practiceHistoryRepository: HivePracticeHistoryRepository(
         Hive.box<WordAttempt>('attempts'),
       ),
+      progressInsightsRepository: HiveProgressInsightsRepository(
+        Hive.box<ProgressData>('progress'),
+      ),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, required this.practiceHistoryRepository});
+  const MyApp({
+    super.key,
+    required this.practiceHistoryRepository,
+    required this.progressInsightsRepository,
+  });
 
   final PracticeHistoryRepository practiceHistoryRepository;
+  final ProgressInsightsRepository progressInsightsRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +53,10 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         fontFamily: 'Comic Sans MS', // Børnevenlig font
       ),
-      home: HomeScreen(practiceHistoryRepository: practiceHistoryRepository),
+      home: HomeScreen(
+        practiceHistoryRepository: practiceHistoryRepository,
+        progressInsightsRepository: progressInsightsRepository,
+      ),
     );
   }
 }
