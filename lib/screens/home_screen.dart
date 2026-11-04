@@ -6,15 +6,22 @@ import 'package:flutter/material.dart';
 import '../data/words_content.dart';
 import '../features/practice_history/domain/practice_history_repository.dart';
 import '../features/practice_history/presentation/practice_history_screen.dart';
+import '../features/progress_insights/domain/progress_insights_repository.dart';
+import '../features/progress_insights/presentation/progress_insights_screen.dart';
 import '../services/progress_service.dart';
 import '../services/unlock_service.dart';
 import '../widgets/word_card.dart';
 import 'progress_overview_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.practiceHistoryRepository});
+  const HomeScreen({
+    super.key,
+    required this.practiceHistoryRepository,
+    required this.progressInsightsRepository,
+  });
 
   final PracticeHistoryRepository practiceHistoryRepository;
+  final ProgressInsightsRepository progressInsightsRepository;
 
   @override
   HomeScreenState createState() => HomeScreenState();
@@ -46,6 +53,19 @@ class HomeScreenState extends State<HomeScreen>
         title: const Text('Sproki 🗣️'),
         backgroundColor: Colors.blue.shade300,
         actions: [
+          IconButton(
+            tooltip: 'Forslag til næste øvelse',
+            icon: const Icon(Icons.tips_and_updates_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ProgressInsightsScreen(
+                    repository: widget.progressInsightsRepository,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Vis øvelseshistorik',
             icon: const Icon(Icons.history),
