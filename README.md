@@ -8,7 +8,7 @@ The app is designed to run locally. **It does not require paid hosting.** Speech
 
 - Browse Danish words and phonetic categories, with progressively unlocked activities.
 - Tap a word illustration to hear it spoken using the device's text-to-speech service.
-- Practice speaking using the device's speech-recognition integration.
+- Practice speaking using the device's speech-recognition integration. An event-driven `SpeechBloc` controls microphone availability, start/stop, partial transcripts, matching, five-second timeout and cancellation when the screen closes.
 - Store exercise attempts and per-word progress locally with Hive.
 - Inspect progress and generate a local PDF report using the existing reporting tools.
 - **New: Exercise history** (clock icon on the home screen) lists the 50 most recent locally stored attempts, newest first, with the practiced word, time and result. Refresh, empty, loading and error states are supported. No remote service is used.
@@ -60,6 +60,12 @@ The tests cover Cubit state transitions, retries and cancellation safety, local 
 The `lib/features/progress_insights/` feature follows the same separation as the history feature: pure-Dart ranking rules and immutable snapshots in `domain/`, a read-only adapter for the existing Hive progress box in `data/`, a `ProgressInsightsCubit` for initial/loading/empty/loaded/error states in `application/`, and a Flutter screen in `presentation/`. The existing per-word Hive schema is unchanged. Tests cover ranking rules, invalid data, database snapshots, refresh/error behavior and the screen.
 
 **Important:** the numbers describe previous attempts on this device; they are not an assessment of pronunciation or a substitute for professional guidance. This data is not currently separated by child profile.
+
+## Microphone workflow architecture
+
+The `lib/features/speech_practice/` feature separates a device-independent event-driven `SpeechBloc` from a gateway to the existing `speech_to_text` integration. Microphone start and stop, availability failures, partial transcripts, timeout and disposal are handled outside the widget. Whole-word phrase comparison is isolated in a pure-Dart `WordMatcher`, with tests guarding against accidental substring matches. Existing scoring, unlock rules, TTS and Hive record format remain unchanged.
+
+**Privacy:** Sproki does not persist raw audio or send recordings to its own backend. However, the current speech plugin is configured with `onDevice: false`, so the platform's speech service may process audio remotely depending on device and provider settings. Do not describe this as guaranteed offline or on-device recognition. The app's saved outcomes are illustrative, not clinical pronunciation assessments.
 
 ## Privacy and limitations
 
