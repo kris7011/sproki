@@ -12,6 +12,7 @@ The app is designed to run locally. **It does not require paid hosting.** Speech
 - Store exercise attempts and per-word progress locally with Hive.
 - Inspect progress and generate a local PDF report using the existing reporting tools.
 - **New: Exercise history** (clock icon on the home screen) lists the 50 most recent locally stored attempts, newest first, with the practiced word, time and result. Refresh, empty, loading and error states are supported. No remote service is used.
+- **New: Practice suggestions** (light-bulb icon on the home screen) shows transparent, local progress insights and up to five suggested words for another practice session. Selecting a word opens the existing practice screen; returning refreshes the summary. Suggestions use existing per-word attempts, exclude locked/unknown words and never claim to provide clinical advice.
 
 ## Run locally
 
@@ -53,6 +54,12 @@ lib/features/practice_history/
 The composition root (`main.dart`) injects the repository into `HomeScreen`. The history screen provides a feature-scoped `PracticeHistoryCubit` with `BlocProvider` and renders immutable loading, empty, loaded and failure states with `BlocBuilder`. Neither the Cubit nor the widgets import Hive. The Hive adapter maps existing `WordAttempt` data into immutable snapshots; **the stored schema and adapters are unchanged**. This keeps the feature isolated and testable with fake repositories.
 
 The tests cover Cubit state transitions, retries and cancellation safety, local Hive mapping and sorting, and widget empty/populated states. Cubit states are asserted through its public stream using `flutter_test`; this avoids a dependency conflict between the current `bloc_test` and the legacy Hive code generator. The existing Flutter template counter test has been replaced with tests of real app functionality.
+
+## Practice suggestions architecture
+
+The `lib/features/progress_insights/` feature follows the same separation as the history feature: pure-Dart ranking rules and immutable snapshots in `domain/`, a read-only adapter for the existing Hive progress box in `data/`, a `ProgressInsightsCubit` for initial/loading/empty/loaded/error states in `application/`, and a Flutter screen in `presentation/`. The existing per-word Hive schema is unchanged. Tests cover ranking rules, invalid data, database snapshots, refresh/error behavior and the screen.
+
+**Important:** the numbers describe previous attempts on this device; they are not an assessment of pronunciation or a substitute for professional guidance. This data is not currently separated by child profile.
 
 ## Privacy and limitations
 
